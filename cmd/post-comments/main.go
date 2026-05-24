@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mberneti/clab/internal/gitlab"
@@ -124,10 +125,20 @@ func buildCommentBody(f gitlab.Finding) string {
 		sev, f.Rule, f.Description, f.Fix)
 }
 
+// flexInt unmarshals JSON numbers or quoted-number strings into int.
+type flexInt int
+
+func (f *flexInt) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	n, _ := strconv.Atoi(s)
+	*f = flexInt(n)
+	return nil
+}
+
 type noteResponse struct {
-	ID    int `json:"id"`
+	ID    flexInt `json:"id"`
 	Notes []struct {
-		ID int `json:"id"`
+		ID flexInt `json:"id"`
 	} `json:"notes"`
 }
 
@@ -142,7 +153,7 @@ func postDiscussion(c *http.Client, base, enc, mrIID, token string, f gitlab.Fin
 		if err := apiPost(c, u, token, payload, &resp); err != nil {
 			return 0, err
 		}
-		return resp.ID, nil
+		return int(resp.ID), nil
 	}
 
 	// Inline discussion
@@ -163,9 +174,9 @@ func postDiscussion(c *http.Client, base, enc, mrIID, token string, f gitlab.Fin
 		return 0, err
 	}
 	if len(resp.Notes) > 0 {
-		return resp.Notes[0].ID, nil
+		return int(resp.Notes[0].ID), nil
 	}
-	return resp.ID, nil
+	return int(resp.ID), nil
 }
 
 func apiPost(c *http.Client, u, token string, payload any, out any) error {

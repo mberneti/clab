@@ -1,4 +1,9 @@
 bin/
 dist/
+/post-comments
+/fetch-diff
+/lint-rules
 *.env
 .claude/gitlab-mr-review.env
+.DS_Store
+gitlab-mr-review.env
