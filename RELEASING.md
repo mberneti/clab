@@ -28,10 +28,14 @@
 
 6. **Create GitHub release**
    ```bash
+   NOTES="$(awk '/## \[vX.Y.Z\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md)"
    gh release create vX.Y.Z dist/*.tar.gz \
      --title "vX.Y.Z" \
-     --notes "$(sed -n '/## \[vX.Y.Z\]/,/## \[/p' CHANGELOG.md | head -n -1)"
+     --target main \
+     --notes "$NOTES"
    ```
+
+   > `--target main` is required when the tag has not yet been pushed to the remote.
 
 ## Versioning
 

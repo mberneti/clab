@@ -56,8 +56,8 @@ Go to **GitLab → User Settings → Access Tokens** and create a token with the
 ### 2. Add the skill to your Claude Code project
 
 ```bash
-mkdir -p .claude
-curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/SKILL.md -o .claude/SKILL.md
+mkdir -p .claude/commands
+curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/SKILL.md -o .claude/commands/clab-review.md
 ```
 
 ### 3. Create the config file
