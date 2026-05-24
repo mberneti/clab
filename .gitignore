@@ -1,0 +1,4 @@
+bin/
+dist/
+*.env
+.claude/gitlab-mr-review.env
