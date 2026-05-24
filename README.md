@@ -1,7 +1,8 @@
 # clab
 
 AI-powered GitLab MR code review as a Claude Code skill.  
-Fetches the diff, runs lint rules, and posts inline comments — no external services, no Node.js.
+Fetches the diff, runs lint rules, and posts inline comments — no external services, no Node.js.  
+Can also analyze past MRs to generate project-specific review rules automatically.
 
 ---
 
@@ -11,13 +12,14 @@ Fetches the diff, runs lint rules, and posts inline comments — no external ser
 /clab-review <MR_URL>
 ```
 
-Claude Code invokes three Go binaries in sequence:
+Claude Code invokes Go binaries in sequence:
 
 | Binary | What it does |
 |--------|--------------|
 | `clab-fetch-diff` | Fetches MR metadata + full paginated diff → `/tmp/gl_mr_data.json` |
 | `clab-lint-rules` | Runs regex-based lint rules → `/tmp/gl_mr_auto_findings.json` |
 | `clab-post-comments` | Posts findings as inline GitLab discussions |
+| `clab-list-mrs` | Lists MR IIDs by count, specific IDs, or date range (used by `prepare-rules`) |
 
 Claude performs a semantic review on top of the lint output, then calls `clab-post-comments` with the combined findings.
 
@@ -29,7 +31,7 @@ Claude performs a semantic review on top of the lint output, then calls `clab-po
 curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/install.sh | bash
 ```
 
-Installs `clab-fetch-diff`, `clab-lint-rules`, and `clab-post-comments` to `/usr/local/bin`.
+Installs `clab-fetch-diff`, `clab-lint-rules`, `clab-post-comments`, and `clab-list-mrs` to `/usr/local/bin`.
 
 **Custom install directory:**
 
@@ -91,6 +93,8 @@ RULE[minor]    rtl-missing — user-facing text must have dir="rtl"
 
 ## Usage
 
+### Review a single MR
+
 ```
 /clab-review <MR_URL>
 /clab-review <MR_IID>                    # uses GITLAB_PROJECT from config
@@ -98,6 +102,19 @@ RULE[minor]    rtl-missing — user-facing text must have dir="rtl"
 /clab-review <MR_URL> --rules-only       # print active rules and exit
 /clab-review <MR_URL> --severity major+  # only major and critical
 ```
+
+### Generate rules from past MRs
+
+```
+/clab-prepare-rules --last 20
+/clab-prepare-rules --mr-ids 123,456,789
+/clab-prepare-rules --since 2026-01-01
+/clab-prepare-rules --since 2026-01-01 --until 2026-03-31
+/clab-prepare-rules --last 10 --dry-run   # print suggestions, don't write file
+/clab-prepare-rules --last 10 --append    # append to existing rules file
+```
+
+Analyzes findings across multiple MRs, identifies recurring patterns, and writes them as named rules to `.claude/gitlab-mr-review-rules.md`.
 
 ---
 
@@ -137,6 +154,18 @@ Out:  /tmp/gl_mr_auto_findings.json (default)
 ```
 Env:  GITLAB_TOKEN  GITLAB_HOST  GITLAB_PROJECT_ID  GITLAB_MR_IID
 In:   /tmp/gl_mr_findings.json  (default)
+```
+
+### `clab-list-mrs [flags] [output.json]`
+
+```
+Env:    GITLAB_TOKEN  GITLAB_HOST  GITLAB_PROJECT_ID
+Out:    /tmp/gl_mr_list.json  (default)
+Flags:
+  --last N                 last N MRs (any state), newest first
+  --mr-ids IID,IID,...     specific MR IIDs
+  --since YYYY-MM-DD       MRs created on or after date
+  --until YYYY-MM-DD       MRs created on or before date (combine with --since)
 ```
 
 ---

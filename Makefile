@@ -2,7 +2,7 @@ MODULE  := github.com/mberneti/clab
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-CMDS := fetch-diff lint-rules post-comments
+CMDS := fetch-diff lint-rules post-comments list-mrs
 
 .PHONY: all build install clean release
 

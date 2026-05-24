@@ -1,6 +1,6 @@
 ---
 name: clab
-description: "AI-powered review of self-hosted GitLab merge requests. Fetches MR diff, applies project-specific rules, posts inline comments."
+description: "AI-powered review of self-hosted GitLab merge requests. Fetches MR diff, applies project-specific rules, posts inline comments. Can analyze past MRs to generate review rules."
 ---
 
 # /clab-review
@@ -143,6 +143,130 @@ Review complete: !<iid> — <N> finding(s) posted
 ```
 
 Append `(dry run — no comments posted)` if `--dry-run`.
+
+---
+
+---
+
+# /clab-prepare-rules
+
+Analyze past MR reviews to generate or update `.claude/gitlab-mr-review-rules.md`. Identifies recurring issues across multiple MRs and converts them into named, actionable rules.
+
+## Usage
+
+```
+/clab-prepare-rules --last 20
+/clab-prepare-rules --mr-ids 123,456,789
+/clab-prepare-rules --since 2026-01-01
+/clab-prepare-rules --since 2026-01-01 --until 2026-03-31
+/clab-prepare-rules --last 10 --dry-run        # print suggested rules, don't write file
+/clab-prepare-rules --last 10 --append         # append to existing rules file instead of replacing
+```
+
+## What You Must Do When Invoked
+
+### Step 0 — Resolve config
+
+Same as `/clab-review` Step 0. Read `.claude/gitlab-mr-review.env` and overlay with env. Required: `GITLAB_TOKEN`, `GITLAB_HOST`, `GITLAB_PROJECT`.
+
+### Step 1 — List MRs
+
+Run the list binary:
+
+```bash
+GITLAB_TOKEN="$GITLAB_TOKEN" \
+GITLAB_HOST="$GITLAB_HOST" \
+GITLAB_PROJECT_ID="<URL-decoded $GITLAB_PROJECT>" \
+  clab-list-mrs [--last N | --mr-ids IID,IID,... | --since DATE [--until DATE]] /tmp/gl_mr_list.json
+```
+
+Read `/tmp/gl_mr_list.json`. It contains an array of MR summaries with fields: `iid`, `title`, `author`, `state`, `source_branch`, `target_branch`, `created_at`.
+
+If 0 MRs returned, stop and tell the user.
+
+### Step 2 — Fetch diffs + lint for each MR
+
+For each MR in the list, run fetch-diff and lint-rules:
+
+```bash
+GITLAB_TOKEN="$GITLAB_TOKEN" \
+GITLAB_HOST="$GITLAB_HOST" \
+GITLAB_PROJECT_ID="<URL-decoded $GITLAB_PROJECT>" \
+GITLAB_MR_IID="<iid>" \
+  clab-fetch-diff /tmp/gl_mr_data_<iid>.json
+
+clab-lint-rules /tmp/gl_mr_data_<iid>.json /tmp/gl_mr_auto_findings_<iid>.json
+```
+
+Collect all findings across all MRs into a single in-memory list, tagged with the source MR IID.
+
+**Performance note:** If the list is large (>30 MRs), process in batches of 10 and print progress.
+
+### Step 3 — Semantic analysis across MRs
+
+Read all `files[].annotated` from each `/tmp/gl_mr_data_<iid>.json`. For each MR, note issues that appear in the diff but are NOT already in the auto-findings (same semantic review scope as `/clab-review` Step 4, but across multiple MRs).
+
+Then aggregate all findings (auto + semantic) and identify **patterns**: issues that appear in 2 or more MRs, or that represent a clear team/codebase anti-pattern even if seen once.
+
+For each pattern, synthesize a rule candidate:
+
+```
+RULE[<severity>] <id> — <description>
+# Seen in: !<iid1>, !<iid2>, ... (<N> occurrences)
+# Example: <one-line concrete example from the diff>
+```
+
+**Severity assignment:**
+- `critical` — security, data loss, broken functionality
+- `major` — correctness issues, API violations, significant UX problems
+- `minor` — style, naming, missing convenience features
+
+**Deduplication:** If an existing rule in `.claude/gitlab-mr-review-rules.md` already covers the pattern, skip it — don't create duplicates.
+
+**Noise filter:** Discard single-occurrence patterns that are clearly one-off mistakes, not team-wide habits.
+
+### Step 4 — Present rule candidates
+
+Print the suggested rules grouped by severity, with their evidence:
+
+```
+Suggested rules from analysis of <N> MR(s):
+
+[critical]
+  RULE[critical] no-raw-sql — never use raw SQL string interpolation; use parameterized queries
+  # Seen in: !34, !41 (2 occurrences)
+  # Example: db.Query("SELECT * FROM users WHERE id=" + userId)
+
+[major]
+  RULE[major] missing-error-boundary — async component fetch without error boundary
+  # Seen in: !28, !31, !35 (3 occurrences)
+
+[minor]
+  RULE[minor] console-log-debug — console.log left in non-error paths
+  # Seen in: !28, !30, !33, !38 (4 occurrences)
+```
+
+If no patterns found: print `No recurring patterns found across the analyzed MRs.` and stop.
+
+### Step 5 — Write rules file (skip if --dry-run)
+
+If `--append`: append the new rules (without duplicates) to the existing `.claude/gitlab-mr-review-rules.md`, after the last existing rule.
+
+Otherwise (default): **replace** the project-specific rules section in `.claude/gitlab-mr-review-rules.md`, preserving the META header block.
+
+Rules are written as active rules (not commented out). Strip the `# Seen in:` / `# Example:` evidence lines from the written file — those are for display only.
+
+Format each written rule:
+```
+RULE[<severity>] <id> — <description>
+```
+
+Print:
+```
+Rules written to .claude/gitlab-mr-review-rules.md
+  Added: N rule(s)
+  Skipped (already covered): N rule(s)
+```
 
 ---
 

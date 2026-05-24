@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.0] - 2026-05-24
+
+### Added
+- `clab-list-mrs`: list MR IIDs by `--last N`, `--mr-ids 1,2,3`, or `--since`/`--until` date range
+- `/clab-prepare-rules` skill: analyze past MRs to generate project-specific review rules; supports `--dry-run` and `--append`
+
 ## [v1.0.1] - 2026-05-24
 
 ### Fixed
