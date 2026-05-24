@@ -14,8 +14,9 @@ Analyze past MR reviews to generate or update `.claude/gitlab-mr-review-rules.md
 /clab-prepare-rules --mr-ids 123,456,789
 /clab-prepare-rules --since 2026-01-01
 /clab-prepare-rules --since 2026-01-01 --until 2026-03-31
-/clab-prepare-rules --last 10 --dry-run   # print suggested rules, don't write file
-/clab-prepare-rules --last 10 --append    # append to existing rules instead of replacing
+/clab-prepare-rules --last 10 --dry-run          # print suggested rules, don't write file
+/clab-prepare-rules --last 10 --append           # append to existing rules instead of replacing
+/clab-prepare-rules --last 30 --min-occurrences 3  # only promote patterns seen in 3+ MRs
 ```
 
 | Flag | Description |
@@ -24,6 +25,7 @@ Analyze past MR reviews to generate or update `.claude/gitlab-mr-review-rules.md
 | `--mr-ids IID,...` | Analyze specific MRs by IID, comma-separated |
 | `--since YYYY-MM-DD` | Analyze MRs created on or after this date |
 | `--until YYYY-MM-DD` | Upper bound for `--since` (optional, defaults to today) |
+| `--min-occurrences N` | Minimum MR count for a pattern to become a rule candidate (default: 2) |
 | `--dry-run` | Print rule candidates without writing the file |
 | `--append` | Append new rules to existing file instead of replacing the rules section |
 
@@ -84,10 +86,12 @@ Collect all findings across all MRs into a single working list, each tagged with
 
 Read `files[].annotated` from each `/tmp/gl_mr_data_<iid>.json`. For each MR, identify issues in added lines that are NOT already captured in the auto-findings (same scope as `/clab-review` Step 4: logic bugs, hook misuse, API contract violations, UX issues — not re-checking lint-covered rules).
 
+Read `--min-occurrences N` from the invocation (default: `2`).
+
 Aggregate all findings (auto + semantic) and identify **patterns**:
-- Issues appearing in **2 or more** MRs → strong rule candidate
-- Issues appearing once but representing a clear team-wide anti-pattern → weak candidate (flag with lower confidence)
-- Single-occurrence one-off mistakes → discard
+- Issues appearing in **`N` or more** MRs → rule candidate
+- Issues appearing in fewer than `N` MRs but representing a clear team-wide anti-pattern → weak candidate, shown with a `(low confidence)` tag; never written to the file unless `N` is 1
+- Single-occurrence one-off mistakes → discard silently
 
 For each pattern, synthesize a rule candidate with evidence:
 
