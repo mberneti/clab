@@ -55,11 +55,14 @@ Supports Linux and macOS on amd64 and arm64. Pre-built archives are on the [Rele
 
 Go to **GitLab → User Settings → Access Tokens** and create a token with the `api` scope.
 
-### 2. Add the skill to your Claude Code project
+### 2. Add the skills to your Claude Code project
 
 ```bash
 mkdir -p .claude/commands
-curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/SKILL.md -o .claude/commands/clab-review.md
+curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/commands/clab-review.md \
+  -o .claude/commands/clab-review.md
+curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/commands/clab-prepare-rules.md \
+  -o .claude/commands/clab-prepare-rules.md
 ```
 
 ### 3. Create the config file
