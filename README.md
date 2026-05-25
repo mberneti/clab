@@ -14,12 +14,12 @@ Can also analyze past MRs to generate project-specific review rules automaticall
 
 Claude Code invokes Go binaries in sequence:
 
-| Binary | What it does |
-|--------|--------------|
-| `clab-fetch-diff` | Fetches MR metadata + full paginated diff → `/tmp/gl_mr_data.json` |
-| `clab-lint-rules` | Runs regex-based lint rules → `/tmp/gl_mr_auto_findings.json` |
-| `clab-post-comments` | Posts findings as inline GitLab discussions |
-| `clab-list-mrs` | Lists MR IIDs by count, specific IDs, or date range (used by `prepare-rules`) |
+| Binary               | What it does                                                                  |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `clab-fetch-diff`    | Fetches MR metadata + full paginated diff → `/tmp/gl_mr_data.json`            |
+| `clab-lint-rules`    | Runs regex-based lint rules → `/tmp/gl_mr_auto_findings.json`                 |
+| `clab-post-comments` | Posts findings as inline GitLab discussions                                   |
+| `clab-list-mrs`      | Lists MR IIDs by count, specific IDs, or date range (used by `prepare-rules`) |
 
 Claude performs a semantic review on top of the lint output, then calls `clab-post-comments` with the combined findings.
 
@@ -61,7 +61,7 @@ Supports Linux and macOS on amd64 and arm64. Pre-built archives are on the [Rele
 
 Go to **GitLab → User Settings → Access Tokens** and create a token with the `api` scope.
 
-### 2. Add the skills to your Claude Code project
+### 2. Add the skills to your Claude Code or Cursor project
 
 ```bash
 mkdir -p .claude/commands
@@ -70,6 +70,8 @@ curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/commands/clab-re
 curl -fsSL https://raw.githubusercontent.com/mberneti/clab/main/commands/clab-prepare-rules.md \
   -o .claude/commands/clab-prepare-rules.md
 ```
+
+> **Cursor users:** same steps, Cursor reads `.claude/commands/` and exposes them as `/` slash commands in the chat panel.
 
 ### 3. Create the config file
 
@@ -102,6 +104,8 @@ RULE[minor]    rtl-missing — user-facing text must have dir="rtl"
 
 ## Usage
 
+Works in **Claude Code** and **Cursor** — both read `.claude/commands/` and invoke the same `/` slash commands.
+
 ### Review a single MR
 
 ```
@@ -129,12 +133,12 @@ Analyzes findings across multiple MRs, identifies recurring patterns, and writes
 
 ## Built-in rules
 
-| Severity | Rule ID | What it catches |
-|----------|---------|-----------------|
-| critical | `no-secrets` | Hardcoded tokens, passwords, API keys |
-| major | `dead-code` | Commented-out code blocks (>3 consecutive lines) |
-| minor | `todo-comment` | TODO/FIXME without a ticket reference |
-| minor | `large-file` | File diff > 400 lines — suggests splitting |
+| Severity | Rule ID        | What it catches                                  |
+| -------- | -------------- | ------------------------------------------------ |
+| critical | `no-secrets`   | Hardcoded tokens, passwords, API keys            |
+| major    | `dead-code`    | Commented-out code blocks (>3 consecutive lines) |
+| minor    | `todo-comment` | TODO/FIXME without a ticket reference            |
+| minor    | `large-file`   | File diff > 400 lines — suggests splitting       |
 
 Project-specific rules from `.claude/gitlab-mr-review-rules.md` are applied on top.
 
