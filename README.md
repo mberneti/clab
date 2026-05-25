@@ -25,6 +25,12 @@ Claude performs a semantic review on top of the lint output, then calls `clab-po
 
 ---
 
+## Demo
+
+![Detected issue posted as inline GitLab discussion](demo/detected-issue.png)
+
+---
+
 ## Installation
 
 ```bash
